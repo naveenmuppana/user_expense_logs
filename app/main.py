@@ -2,12 +2,13 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 import logging
-
+from app.routers.expense import router as expenses_router
 from app.core.database import get_db
 
 
-app= FastAPI()
 
+app= FastAPI()
+app.include_router(expenses_router)
 logger = logging.getLogger("uvicorn.error")
 
 
