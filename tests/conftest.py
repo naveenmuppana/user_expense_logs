@@ -7,8 +7,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base, get_db
+from importlib import import_module
+
 from app.main import app
-import app.models  # Registers your SQLAlchemy models
+from importlib import import_module
+
+import_module("app.models")
 
 load_dotenv()
 
