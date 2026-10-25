@@ -3,7 +3,7 @@ import os
 import pytest
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, delete
 from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base, get_db
@@ -11,6 +11,7 @@ from importlib import import_module
 
 from app.main import app
 from importlib import import_module
+from app.models import Expense
 
 import_module("app.models")
 
@@ -55,3 +56,9 @@ def client():
         yield test_client
 
     app.dependency_overrides.clear()
+    
+    
+@pytest.fixture(autouse=True)
+def clean_expenses_table():
+    with test_engine.begin() as connection:
+        connection.execute(delete(Expense))
