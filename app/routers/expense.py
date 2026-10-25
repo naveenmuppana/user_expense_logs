@@ -72,7 +72,7 @@ def get_expenses(db: Session = Depends(get_db),
     if start_date is not None and end_date is not None:
         if start_date > end_date:
             raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="start_date cannot be later than end_date",
         )
     # Sort using an allowlist of model columns
