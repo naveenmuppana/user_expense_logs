@@ -321,3 +321,5 @@ def test_get_expenses_rejects_invalid_sort_field(client):
     response = client.get("/expense/?sort_by=category")
 
     assert response.status_code == 422
+
+
