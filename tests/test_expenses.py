@@ -285,7 +285,13 @@ def test_delete_expense(client):
     returned_ids = [item["id"] for item in list_response.json()]
     assert expense_id not in returned_ids
 
+def test_delete_expense_not_found(client):
+    response = client.delete("/expense/999999")
 
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Expense not found"
+    }
 
 def test_get_expenses_rejects_invalid_amount_range(client):
     response = client.get(

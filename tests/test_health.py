@@ -55,3 +55,10 @@ def test_global_exception_handler_returns_safe_message(client):
         "detail": "An unexpected error occurred"
     }
     assert "Sensitive internal database details" not in response.text
+def test_root_endpoint(client):
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "message": "This is the starting page"
+    }
