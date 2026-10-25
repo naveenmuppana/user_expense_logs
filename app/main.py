@@ -25,6 +25,10 @@ def health_check(db: Session = Depends(get_db)):
     try:
         db.execute(text("SELECT 1"))
         return {"status": "healthy", "database": "Connected"}
-    except Exception as e:
-        logger.exception("DB health check failed")
-        raise HTTPException(status_code=500, detail=f"Database Unavailable: {e}")     
+    
+    except Exception:
+        logger.exception("Database health check failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Database unavailable",
+    )
