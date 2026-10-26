@@ -1,5 +1,6 @@
 
 import os
+from urllib.parse import urlparse
 
 import pytest
 from dotenv import load_dotenv
@@ -18,8 +19,13 @@ TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 if not TEST_DATABASE_URL:
     raise RuntimeError("TEST_DATABASE_URL is missing")
 
-if "expense_tracker_test" not in TEST_DATABASE_URL:
-    raise RuntimeError("Tests must use expense_tracker_test")
+parsed_test_url = urlparse(TEST_DATABASE_URL)
+test_database_name = parsed_test_url.path.lstrip("/")
+
+if test_database_name != "expense_tracker_test":
+    raise RuntimeError(
+        "Tests must use the expense_tracker_test database"
+    )
 
 test_engine = create_engine(TEST_DATABASE_URL)
 
