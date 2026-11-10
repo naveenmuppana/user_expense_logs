@@ -17,7 +17,11 @@ class Expense(Base):
 
     user_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("users.id", ondelete="CASCADE"),
+        ForeignKey(
+    "users.id",
+    ondelete="CASCADE",
+    name="fk_expense_user_id_users",
+),
         nullable=False,
         index=True,
     )

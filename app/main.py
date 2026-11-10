@@ -9,6 +9,10 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.routers.expense import router as expenses_router
 
+from app.routers.auth import router as auth_router
+
+
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,6 +23,7 @@ logger = logging.getLogger("expensehub")
 
 app = FastAPI(title="ExpenseHub API")
 app.include_router(expenses_router)
+app.include_router(auth_router)
 
 
 @app.exception_handler(Exception)
