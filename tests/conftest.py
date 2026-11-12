@@ -10,7 +10,8 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base, get_db
 from app.main import app
-from app.models import Expense
+from app.models import Expense, User
+
 
 load_dotenv()
 
@@ -45,9 +46,11 @@ def setup_test_database():
 
 
 @pytest.fixture(autouse=True)
-def clean_expenses_table():
+def clean_test_data():
     with test_engine.begin() as connection:
+        # Delete expenses first because they reference users
         connection.execute(delete(Expense))
+        connection.execute(delete(User))
 
 
 @pytest.fixture
