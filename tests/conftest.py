@@ -9,9 +9,10 @@ from sqlalchemy import create_engine, delete
 from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base, get_db
+from app.core.security import hash_password
+from app.core.token import create_access_token
 from app.main import app
 from app.models import Expense, User
-
 
 load_dotenv()
 
@@ -48,13 +49,43 @@ def setup_test_database():
 @pytest.fixture(autouse=True)
 def clean_test_data():
     with test_engine.begin() as connection:
-        # Delete expenses first because they reference users
         connection.execute(delete(Expense))
         connection.execute(delete(User))
 
 
 @pytest.fixture
-def client():
+def test_user():
+    db = TestingSessionLocal()
+
+    try:
+        user = User(
+            username="testuser",
+            email="testuser@example.com",
+            hashed_password=hash_password("TestPassword123"),
+            is_active=True,
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        return user.id
+
+    finally:
+        db.close()
+
+
+@pytest.fixture
+def auth_headers(test_user):
+    token = create_access_token(test_user)
+
+    return {
+        "Authorization": f"Bearer {token}"
+    }
+
+
+@pytest.fixture
+def client(auth_headers):
     def override_get_db():
         db = TestingSessionLocal()
         try:
@@ -66,6 +97,7 @@ def client():
 
     try:
         with TestClient(app) as test_client:
+            test_client.headers.update(auth_headers)
             yield test_client
     finally:
         app.dependency_overrides.clear()
