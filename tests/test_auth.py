@@ -1,3 +1,4 @@
+from app.core.token import create_access_token
 
 def test_register_user(client):
     response = client.post(
@@ -119,3 +120,43 @@ def test_user_cannot_access_another_users_expenses(client):
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_expense_rejects_token_for_nonexistent_user(client):
+    token = create_access_token(999999)
+
+    response = client.get(
+        "/expense/",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Could not validate credentials"
+
+
+def test_expense_rejects_inactive_user(client, inactive_user):
+    token = create_access_token(inactive_user)
+
+    response = client.get(
+        "/expense/",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "User account is inactive"
+
+
+def test_inactive_user_cannot_login(client, inactive_user):
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": "inactive@example.com",
+            "password": "TestPassword123",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "User account is inactive"
+
+
+

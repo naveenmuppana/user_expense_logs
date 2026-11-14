@@ -76,6 +76,27 @@ def test_user():
 
 
 @pytest.fixture
+def inactive_user():
+    db = TestingSessionLocal()
+
+    try:
+        user = User(
+            username="inactiveuser",
+            email="inactive@example.com",
+            hashed_password=hash_password("TestPassword123"),
+            is_active=False,
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        return user.id
+
+    finally:
+        db.close()
+
+@pytest.fixture
 def auth_headers(test_user):
     token = create_access_token(test_user)
 
