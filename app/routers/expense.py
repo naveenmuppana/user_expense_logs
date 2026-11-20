@@ -64,28 +64,6 @@ def get_expenses(
         pattern="^(asc|desc)$",
     ),
 ):
-    # Always restrict results to the authenticated user.
-    query = db.query(Expense).filter(
-        Expense.user_id == current_user.id
-    )
-
-    if category is not None:
-        query = query.filter(
-            Expense.category.ilike(category.strip())
-        )
-
-    if min_amount is not None:
-        query = query.filter(Expense.amount >= min_amount)
-
-    if max_amount is not None:
-        query = query.filter(Expense.amount <= max_amount)
-
-    if start_date is not None:
-        query = query.filter(Expense.created_at >= start_date)
-
-    if end_date is not None:
-        query = query.filter(Expense.created_at <= end_date)
-
     if min_amount is not None and max_amount is not None:
         if min_amount > max_amount:
             raise HTTPException(
@@ -99,6 +77,33 @@ def get_expenses(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="start_date cannot be later than end_date",
             )
+
+    # Always restrict results to the authenticated user.
+    query = db.query(Expense).filter(
+        Expense.user_id == current_user.id
+    )
+
+    if category is not None:
+        # Exact case-insensitive match; escape LIKE wildcards in user input.
+        escaped = (
+            category.strip()
+            .replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_")
+        )
+        query = query.filter(Expense.category.ilike(escaped, escape="\\"))
+
+    if min_amount is not None:
+        query = query.filter(Expense.amount >= min_amount)
+
+    if max_amount is not None:
+        query = query.filter(Expense.amount <= max_amount)
+
+    if start_date is not None:
+        query = query.filter(Expense.created_at >= start_date)
+
+    if end_date is not None:
+        query = query.filter(Expense.created_at <= end_date)
 
     sort_columns = {
         "id": Expense.id,

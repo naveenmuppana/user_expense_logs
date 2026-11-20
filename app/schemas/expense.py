@@ -14,7 +14,7 @@ class expense_update(BaseModel):
     amount: Decimal | None = Field(
         default=None,
         gt=0,
-        max_digits=12,
+        max_digits=10,
         decimal_places=2,
     )
     category: str | None = Field(default=None, min_length=1, max_length=50)
@@ -33,5 +33,5 @@ class expense_response(BaseModel):
 
 class expense_replace(BaseModel):
     title: str = Field(min_length=1, max_length=150)
-    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+    amount: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
     category: str = Field(min_length=1, max_length=50)
