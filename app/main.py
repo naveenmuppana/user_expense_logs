@@ -7,12 +7,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.routers.expense import router as expenses_router
-
 from app.routers.auth import router as auth_router
-
-
-
+from app.routers.expense import router as expenses_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -57,4 +53,4 @@ def health_check(db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=503,
             detail="Database unavailable",
-        )
+        ) from None

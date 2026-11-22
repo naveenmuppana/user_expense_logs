@@ -8,10 +8,10 @@ from app.core.security import hash_password, verify_password
 from app.core.token import create_access_token
 from app.models.user import User
 from app.schemas.user import (
+    TokenResponse,
     UserCreate,
     UserLogin,
     UserResponse,
-    TokenResponse,
 )
 
 router = APIRouter(
@@ -58,7 +58,7 @@ def register_user(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email or username already registered",
-        )
+        ) from None
     db.refresh(new_user)
 
     return new_user

@@ -1,5 +1,6 @@
 from app.core.token import create_access_token
 
+
 def test_register_user(client):
     response = client.post(
         "/auth/register",
