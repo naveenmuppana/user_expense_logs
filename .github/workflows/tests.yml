@@ -40,11 +40,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Lint
+        run: |
+          pip install ruff
+          ruff check app tests
+
       - name: Configure test environment
         run: |
           echo "DATABASE_URL=postgresql://root:testpassword@localhost:5432/expense_tracker_test" >> $GITHUB_ENV
           echo "TEST_DATABASE_URL=postgresql://root:testpassword@localhost:5432/expense_tracker_test" >> $GITHUB_ENV
-      
+          echo "JWT_SECRET_KEY=ci-only-secret-key-not-for-production" >> $GITHUB_ENV
+
       - name: Run tests with coverage
         run: |
           python -m pytest --cov=app --cov-report=term-missing --cov-report=xml

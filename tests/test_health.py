@@ -31,7 +31,7 @@ def test_database_health_check_fails(client):
     finally:
         app.dependency_overrides.pop(get_db, None)
 
-    assert response.status_code == 500
+    assert response.status_code == 503
     assert response.json() == {"detail": "Database unavailable"}
 
 

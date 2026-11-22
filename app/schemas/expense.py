@@ -31,6 +31,18 @@ class expense_response(BaseModel):
     
     
 
+class MonthlySummary(BaseModel):
+    month: int
+    total: Decimal
+    count: int
+
+
+class CategorySummary(BaseModel):
+    category: str
+    total: Decimal
+    count: int
+
+
 class expense_replace(BaseModel):
     title: str = Field(min_length=1, max_length=150)
     amount: Decimal = Field(gt=0, max_digits=10, decimal_places=2)

@@ -55,6 +55,6 @@ def health_check(db: Session = Depends(get_db)):
     except Exception:
         logger.exception("Database health check failed")
         raise HTTPException(
-            status_code=500,
+            status_code=503,
             detail="Database unavailable",
         )

@@ -1,8 +1,9 @@
-
+import csv
+import io
 from datetime import datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -10,16 +11,22 @@ from app.core.dependencies import get_current_user
 from app.models.expense import Expense
 from app.models.user import User
 from app.schemas.expense import (
+    CategorySummary,
+    MonthlySummary,
     expense_create,
     expense_response,
     expense_update,
     expense_replace,
 )
+from app.services import expense_service as service
 
 router = APIRouter(
     prefix="/expense",
     tags=["expense"],
 )
+
+SORT_PATTERN = "^(id|amount|created_at|title)$"
+ORDER_PATTERN = "^(asc|desc)$"
 
 
 @router.post(
@@ -55,71 +62,109 @@ def get_expenses(
     max_amount: Decimal | None = Query(default=None, gt=0),
     start_date: datetime | None = Query(default=None),
     end_date: datetime | None = Query(default=None),
-    sort_by: str = Query(
-        default="id",
-        pattern="^(id|amount|created_at|title)$",
-    ),
-    sort_order: str = Query(
-        default="desc",
-        pattern="^(asc|desc)$",
-    ),
+    sort_by: str = Query(default="id", pattern=SORT_PATTERN),
+    sort_order: str = Query(default="desc", pattern=ORDER_PATTERN),
 ):
-    if min_amount is not None and max_amount is not None:
-        if min_amount > max_amount:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="min_amount cannot exceed max_amount",
-            )
+    service.validate_ranges(min_amount, max_amount, start_date, end_date)
 
-    if start_date is not None and end_date is not None:
-        if start_date > end_date:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="start_date cannot be later than end_date",
-            )
-
-    # Always restrict results to the authenticated user.
-    query = db.query(Expense).filter(
-        Expense.user_id == current_user.id
+    query = service.filtered_query(
+        db,
+        current_user.id,
+        category,
+        min_amount,
+        max_amount,
+        start_date,
+        end_date,
     )
-
-    if category is not None:
-        # Exact case-insensitive match; escape LIKE wildcards in user input.
-        escaped = (
-            category.strip()
-            .replace("\\", "\\\\")
-            .replace("%", "\\%")
-            .replace("_", "\\_")
-        )
-        query = query.filter(Expense.category.ilike(escaped, escape="\\"))
-
-    if min_amount is not None:
-        query = query.filter(Expense.amount >= min_amount)
-
-    if max_amount is not None:
-        query = query.filter(Expense.amount <= max_amount)
-
-    if start_date is not None:
-        query = query.filter(Expense.created_at >= start_date)
-
-    if end_date is not None:
-        query = query.filter(Expense.created_at <= end_date)
-
-    sort_columns = {
-        "id": Expense.id,
-        "amount": Expense.amount,
-        "created_at": Expense.created_at,
-        "title": Expense.title,
-    }
-
-    sort_column = sort_columns[sort_by]
-
-    if sort_order == "desc":
-        query = query.order_by(sort_column.desc(), Expense.id.desc())
-    else:
-        query = query.order_by(sort_column.asc(), Expense.id.asc())
+    query = service.apply_sort(query, sort_by, sort_order)
 
     return query.offset(offset).limit(limit).all()
+
+
+@router.get("/export")
+def export_expenses(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    category: str | None = Query(default=None, min_length=1, max_length=50),
+    min_amount: Decimal | None = Query(default=None, gt=0),
+    max_amount: Decimal | None = Query(default=None, gt=0),
+    start_date: datetime | None = Query(default=None),
+    end_date: datetime | None = Query(default=None),
+    sort_by: str = Query(default="id", pattern=SORT_PATTERN),
+    sort_order: str = Query(default="desc", pattern=ORDER_PATTERN),
+):
+    service.validate_ranges(min_amount, max_amount, start_date, end_date)
+
+    query = service.filtered_query(
+        db,
+        current_user.id,
+        category,
+        min_amount,
+        max_amount,
+        start_date,
+        end_date,
+    )
+    expenses = service.apply_sort(query, sort_by, sort_order).all()
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["id", "title", "amount", "category", "created_at"])
+
+    for expense in expenses:
+        writer.writerow(
+            [
+                expense.id,
+                _csv_safe(expense.title),
+                expense.amount,
+                _csv_safe(expense.category),
+                expense.created_at.isoformat(),
+            ]
+        )
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": 'attachment; filename="expenses.csv"'
+        },
+    )
+
+
+def _csv_safe(value: str) -> str:
+    # Neutralise spreadsheet formula injection in user-supplied text.
+    if value and value[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + value
+    return value
+
+
+@router.get("/summary/monthly", response_model=list[MonthlySummary])
+def monthly_summary(
+    year: int = Query(ge=1970, le=9999),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return service.monthly_totals(db, current_user.id, year)
+
+
+@router.get("/summary/categories", response_model=list[CategorySummary])
+def category_summary(
+    start_date: datetime | None = Query(default=None),
+    end_date: datetime | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    service.validate_ranges(None, None, start_date, end_date)
+
+    return service.category_totals(db, current_user.id, start_date, end_date)
+
+
+@router.get("/{expense_id}", response_model=expense_response)
+def get_expense(
+    expense_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return service.get_owned_expense(db, current_user.id, expense_id)
 
 
 @router.put("/{expense_id}", response_model=expense_response)
@@ -129,20 +174,7 @@ def replace_expense(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    expense = (
-        db.query(Expense)
-        .filter(
-            Expense.id == expense_id,
-            Expense.user_id == current_user.id,
-        )
-        .first()
-    )
-
-    if expense is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Expense not found",
-        )
+    expense = service.get_owned_expense(db, current_user.id, expense_id)
 
     expense.title = expense_data.title
     expense.amount = expense_data.amount
@@ -161,20 +193,7 @@ def update_expense(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    expense = (
-        db.query(Expense)
-        .filter(
-            Expense.id == expense_id,
-            Expense.user_id == current_user.id,
-        )
-        .first()
-    )
-
-    if expense is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Expense not found",
-        )
+    expense = service.get_owned_expense(db, current_user.id, expense_id)
 
     update_data = expense_data.model_dump(exclude_unset=True)
 
@@ -196,20 +215,7 @@ def delete_expense(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    expense = (
-        db.query(Expense)
-        .filter(
-            Expense.id == expense_id,
-            Expense.user_id == current_user.id,
-        )
-        .first()
-    )
-
-    if expense is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Expense not found",
-        )
+    expense = service.get_owned_expense(db, current_user.id, expense_id)
 
     db.delete(expense)
     db.commit()
