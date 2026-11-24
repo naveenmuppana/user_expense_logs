@@ -377,7 +377,8 @@ Expected application errors, such as missing resources and invalid requests, sho
 ### Stage 6 — Finance Features
 
 - [ ] Income tracking.
-- [ ] Budgets and category management.
+- [x] Monthly category budgets with spent/remaining status.
+- [ ] Category management.
 - [ ] Recurring transactions.
 - [ ] Monthly summaries and analytics.
 - [ ] Group expenses and expense splitting.

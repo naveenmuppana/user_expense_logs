@@ -48,9 +48,13 @@ Create the `expense_tracker_test` database by hand before running the tests.
 | GET | `/expense/summary/monthly?year=` | Totals per month |
 | GET | `/expense/summary/categories` | Totals per category |
 | GET | `/expense/export` | CSV export (same filters as the list) |
+| GET | `/budget/` | List your monthly category budgets |
+| PUT | `/budget/{category}` | Set or update a budget (`{"amount": "100.00"}`); category is case-insensitive |
+| DELETE | `/budget/{category}` | Remove a budget |
+| GET | `/budget/status?month=YYYY-MM` | Spent, remaining and `over_budget` per budget (default: current month, UTC) |
 | GET | `/health/db` | Database health (503 when unavailable) |
 
-All `/expense` routes require `Authorization: Bearer <token>` and only see the caller's own data.
+All `/expense` and `/budget` routes require `Authorization: Bearer <token>` and only see the caller's own data.
 
 ## Tests and lint
 
