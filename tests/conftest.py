@@ -12,7 +12,7 @@ from app.core.database import Base, get_db
 from app.core.security import hash_password
 from app.core.token import create_access_token
 from app.main import app
-from app.models import Expense, User
+from app.models import Budget, Expense, User
 
 load_dotenv()
 
@@ -49,6 +49,7 @@ def setup_test_database():
 @pytest.fixture(autouse=True)
 def clean_test_data():
     with test_engine.begin() as connection:
+        connection.execute(delete(Budget))
         connection.execute(delete(Expense))
         connection.execute(delete(User))
 
